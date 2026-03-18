@@ -2,7 +2,6 @@ import express from "express";
 import { google } from "googleapis";
 import { JWT } from "google-auth-library";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import bodyParser from "body-parser";
 import cors from "cors";
 import fs from "fs";
@@ -436,12 +435,17 @@ app.post("/api/data/delete", async (req, res) => {
 // Vite middleware for development
 async function startServer() {
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
+    try {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } catch (e) {
+      console.error("Failed to start Vite server", e);
+    }
+  } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), "dist");
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));

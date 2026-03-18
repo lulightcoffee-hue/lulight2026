@@ -74,6 +74,7 @@ export default function App() {
   const [dataList, setDataList] = useState<InvoiceData[]>([]);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
+  const [configDetails, setConfigDetails] = useState<{ env: any; file: any } | null>(null);
   const [unitPrice, setUnitPrice] = useState<number | "">("");
   const [quantity, setQuantity] = useState<number | "">("");
 
@@ -103,6 +104,7 @@ export default function App() {
       const res = await fetch("/api/config/status");
       const data = await res.json();
       setIsConfigured(data.isConfigured);
+      setConfigDetails(data.details);
     } catch (err) {
       console.error("Failed to fetch config status", err);
     }
@@ -638,6 +640,41 @@ export default function App() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
+              
+              {configDetails?.env && (
+                <div className="px-6 pt-4">
+                  <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
+                    <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3">Vercel 環境變數狀態</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-stone-600">GOOGLE_SERVICE_ACCOUNT_EMAIL</span>
+                        {configDetails.env.email ? 
+                          <span className="text-emerald-600 flex items-center gap-1 font-medium"><CheckCircle2 className="w-3 h-3" /> 已偵測</span> : 
+                          <span className="text-red-500 flex items-center gap-1 font-medium"><AlertCircle className="w-3 h-3" /> 未設定</span>
+                        }
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-stone-600">GOOGLE_PRIVATE_KEY</span>
+                        {configDetails.env.privateKey ? 
+                          <span className="text-emerald-600 flex items-center gap-1 font-medium"><CheckCircle2 className="w-3 h-3" /> 已偵測</span> : 
+                          <span className="text-red-500 flex items-center gap-1 font-medium"><AlertCircle className="w-3 h-3" /> 未設定</span>
+                        }
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-stone-600">GOOGLE_SPREADSHEET_ID</span>
+                        {configDetails.env.spreadsheetId ? 
+                          <span className="text-emerald-600 flex items-center gap-1 font-medium"><CheckCircle2 className="w-3 h-3" /> 已偵測</span> : 
+                          <span className="text-red-500 flex items-center gap-1 font-medium"><AlertCircle className="w-3 h-3" /> 未設定</span>
+                        }
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-stone-400 mt-3 leading-relaxed">
+                      * 在 Vercel 環境下，請務必在 Vercel 控制台設定環境變數。此處的輸入框僅供本地測試使用，無法永久儲存至 Vercel 伺服器。
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleSaveConfig} className="p-6 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-1">Service Account Email</label>

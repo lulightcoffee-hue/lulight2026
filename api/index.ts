@@ -22,28 +22,39 @@ const USERS = {
 const CONFIG_FILE = path.join(process.cwd(), "sheet-config.json");
 
 function getConfig() {
-  // Priority 1: Environment Variables
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY && process.env.GOOGLE_SPREADSHEET_ID) {
-    return {
-      email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      privateKey: process.env.GOOGLE_PRIVATE_KEY,
-      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
-    };
-  }
-
-  // Priority 2: Config File
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
-    }
-  } catch (e) {
-    console.error("Failed to read config file", e);
-  }
-  return {
+  let config = {
     email: "",
     privateKey: "",
     spreadsheetId: "",
   };
+
+  // Priority 1: Environment Variables
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY && process.env.GOOGLE_SPREADSHEET_ID) {
+    config = {
+      email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      privateKey: process.env.GOOGLE_PRIVATE_KEY,
+      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+    };
+  } else {
+    // Priority 2: Config File
+    try {
+      if (fs.existsSync(CONFIG_FILE)) {
+        config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
+      }
+    } catch (e) {
+      console.error("Failed to read config file", e);
+    }
+  }
+
+  // Clean Spreadsheet ID (extract from URL if needed)
+  if (config.spreadsheetId) {
+    const urlMatch = config.spreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    if (urlMatch) {
+      config.spreadsheetId = urlMatch[1];
+    }
+  }
+
+  return config;
 }
 
 function saveConfig(config: any) {
@@ -81,6 +92,10 @@ const getSheetsClient = () => {
   // 3. Replace escaped newlines with actual newlines
   privateKey = privateKey.replace(/\\n/g, "\n");
 
+  if (!privateKey.includes("-----BEGIN PRIVATE KEY-----")) {
+    console.warn("Warning: Private key does not have standard header. Connection might fail.");
+  }
+
   const auth = new JWT({
     email: config.email,
     key: privateKey,
@@ -92,8 +107,31 @@ const getSheetsClient = () => {
 // API Routes
 app.get("/api/config/status", (req, res) => {
   const config = getConfig();
+  const envStatus = {
+    email: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    privateKey: !!process.env.GOOGLE_PRIVATE_KEY,
+    spreadsheetId: !!process.env.GOOGLE_SPREADSHEET_ID,
+  };
+  
   const isConfigured = Boolean(config.email && config.privateKey && config.spreadsheetId);
-  res.json({ isConfigured });
+  
+  console.log("Config Status Check:", { 
+    isConfigured, 
+    envStatus,
+    hasEmail: !!config.email,
+    hasPrivateKey: !!config.privateKey,
+    hasSpreadsheetId: !!config.spreadsheetId
+  });
+
+  res.json({ 
+    isConfigured,
+    details: {
+      env: envStatus,
+      file: {
+        exists: fs.existsSync(CONFIG_FILE)
+      }
+    }
+  });
 });
 
 app.get("/api/config", (req, res) => {

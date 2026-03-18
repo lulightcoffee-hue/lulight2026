@@ -23,6 +23,16 @@ const USERS = {
 const CONFIG_FILE = path.join(process.cwd(), "sheet-config.json");
 
 function getConfig() {
+  // Priority 1: Environment Variables
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY && process.env.GOOGLE_SPREADSHEET_ID) {
+    return {
+      email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      privateKey: process.env.GOOGLE_PRIVATE_KEY,
+      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+    };
+  }
+
+  // Priority 2: Config File
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
@@ -31,14 +41,19 @@ function getConfig() {
     console.error("Failed to read config file", e);
   }
   return {
-    email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "",
-    privateKey: process.env.GOOGLE_PRIVATE_KEY || "",
-    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID || "",
+    email: "",
+    privateKey: "",
+    spreadsheetId: "",
   };
 }
 
 function saveConfig(config: any) {
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+  try {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+  } catch (e) {
+    console.error("Failed to save config file (likely read-only FS)", e);
+    // On Vercel, we can't save files, so we should use env vars
+  }
 }
 
 // Google Sheets Setup
@@ -420,7 +435,7 @@ app.post("/api/data/delete", async (req, res) => {
 
 // Vite middleware for development
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -428,15 +443,21 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer();
+
+export default app;

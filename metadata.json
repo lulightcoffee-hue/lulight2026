@@ -1,0 +1,5 @@
+{
+  "name": "璐光咖啡採購系統",
+  "description": "璐光咖啡的採購與發票登錄系統，支援門市人員登錄與管理端維護 Google Sheets。",
+  "requestFramePermissions": []
+}

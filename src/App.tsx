@@ -307,9 +307,11 @@ export default function App() {
         fetchConfigStatus();
         fetchSheets();
         if (user?.role === "admin") fetchDataList();
+      } else {
+        setMessage({ type: "error", text: data.error || "儲存設定失敗" });
       }
     } catch (err) {
-      setMessage({ type: "error", text: "儲存設定失敗" });
+      setMessage({ type: "error", text: "儲存設定失敗，請檢查網路連線" });
     } finally {
       setLoading(false);
     }
@@ -645,23 +647,47 @@ export default function App() {
                 <div className="px-6 pt-4">
                   <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
                     <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3">Vercel 環境變數狀態</h3>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-stone-600">GOOGLE_SERVICE_ACCOUNT_EMAIL</span>
+                        <div className="flex flex-col">
+                          <span className="text-stone-600 font-mono text-[10px]">GOOGLE_SERVICE_ACCOUNT_EMAIL</span>
+                          <button 
+                            onClick={() => navigator.clipboard.writeText("GOOGLE_SERVICE_ACCOUNT_EMAIL")}
+                            className="text-[10px] text-emerald-600 hover:underline text-left"
+                          >
+                            點擊複製名稱
+                          </button>
+                        </div>
                         {configDetails.env.email ? 
                           <span className="text-emerald-600 flex items-center gap-1 font-medium"><CheckCircle2 className="w-3 h-3" /> 已偵測</span> : 
                           <span className="text-red-500 flex items-center gap-1 font-medium"><AlertCircle className="w-3 h-3" /> 未設定</span>
                         }
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-stone-600">GOOGLE_PRIVATE_KEY</span>
+                        <div className="flex flex-col">
+                          <span className="text-stone-600 font-mono text-[10px]">GOOGLE_PRIVATE_KEY</span>
+                          <button 
+                            onClick={() => navigator.clipboard.writeText("GOOGLE_PRIVATE_KEY")}
+                            className="text-[10px] text-emerald-600 hover:underline text-left"
+                          >
+                            點擊複製名稱
+                          </button>
+                        </div>
                         {configDetails.env.privateKey ? 
                           <span className="text-emerald-600 flex items-center gap-1 font-medium"><CheckCircle2 className="w-3 h-3" /> 已偵測</span> : 
                           <span className="text-red-500 flex items-center gap-1 font-medium"><AlertCircle className="w-3 h-3" /> 未設定</span>
                         }
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-stone-600">GOOGLE_SPREADSHEET_ID</span>
+                        <div className="flex flex-col">
+                          <span className="text-stone-600 font-mono text-[10px]">GOOGLE_SPREADSHEET_ID</span>
+                          <button 
+                            onClick={() => navigator.clipboard.writeText("GOOGLE_SPREADSHEET_ID")}
+                            className="text-[10px] text-emerald-600 hover:underline text-left"
+                          >
+                            點擊複製名稱
+                          </button>
+                        </div>
                         {configDetails.env.spreadsheetId ? 
                           <span className="text-emerald-600 flex items-center gap-1 font-medium"><CheckCircle2 className="w-3 h-3" /> 已偵測</span> : 
                           <span className="text-red-500 flex items-center gap-1 font-medium"><AlertCircle className="w-3 h-3" /> 未設定</span>

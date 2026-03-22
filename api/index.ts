@@ -23,23 +23,19 @@ const CONFIG_FILE = path.join(process.cwd(), "sheet-config.json");
 
 function getConfig() {
   let config = {
-    email: "",
-    privateKey: "",
-    spreadsheetId: "",
+    email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "",
+    privateKey: process.env.GOOGLE_PRIVATE_KEY || "",
+    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID || "",
   };
 
-  // Priority 1: Environment Variables
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY && process.env.GOOGLE_SPREADSHEET_ID) {
-    config = {
-      email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      privateKey: process.env.GOOGLE_PRIVATE_KEY,
-      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
-    };
-  } else {
-    // Priority 2: Config File
+  // If any are missing from env, try to load from file (only if not on Vercel or if we want fallback)
+  if (!config.email || !config.privateKey || !config.spreadsheetId) {
     try {
       if (fs.existsSync(CONFIG_FILE)) {
-        config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
+        const fileConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
+        config.email = config.email || fileConfig.email || "";
+        config.privateKey = config.privateKey || fileConfig.privateKey || "";
+        config.spreadsheetId = config.spreadsheetId || fileConfig.spreadsheetId || "";
       }
     } catch (e) {
       console.error("Failed to read config file", e);
@@ -58,11 +54,14 @@ function getConfig() {
 }
 
 function saveConfig(config: any) {
+  if (process.env.VERCEL) {
+    throw new Error("在 Vercel 環境下無法透過網頁儲存設定。請直接在 Vercel 控制台設定環境變數 (Environment Variables)。");
+  }
   try {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
   } catch (e) {
-    console.error("Failed to save config file (likely read-only FS)", e);
-    // On Vercel, we can't save files, so we should use env vars
+    console.error("Failed to save config file", e);
+    throw new Error("無法儲存設定檔案，請檢查權限。");
   }
 }
 
@@ -144,15 +143,19 @@ app.get("/api/config", (req, res) => {
 });
 
 app.post("/api/config", (req, res) => {
-  const { email, privateKey, spreadsheetId } = req.body;
-  const currentConfig = getConfig();
-  const newConfig = {
-    email: email !== undefined ? email : currentConfig.email,
-    privateKey: privateKey ? privateKey : currentConfig.privateKey, // Only update if provided
-    spreadsheetId: spreadsheetId !== undefined ? spreadsheetId : currentConfig.spreadsheetId
-  };
-  saveConfig(newConfig);
-  res.json({ success: true });
+  try {
+    const { email, privateKey, spreadsheetId } = req.body;
+    const currentConfig = getConfig();
+    const newConfig = {
+      email: email !== undefined ? email : currentConfig.email,
+      privateKey: privateKey ? privateKey : currentConfig.privateKey, // Only update if provided
+      spreadsheetId: spreadsheetId !== undefined ? spreadsheetId : currentConfig.spreadsheetId
+    };
+    saveConfig(newConfig);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 app.post("/api/login", (req, res) => {
